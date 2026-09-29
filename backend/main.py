@@ -3,18 +3,33 @@ Memory Forge - FastAPI Application
 Turn Security Incidents Into Organizational Memory
 """
 
+import sys
+import os
+
+# Ensure repository root is in sys.path for Render deployment
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict, Any
 from datetime import datetime
 
-from backend.models.schemas import (
-    IncidentBase, IncidentCreate, InvestigationResponse,
-    MemoryCommitRequest, AuditQueryRequest, AuditQueryResponse, ChatRequest
-)
-from backend.services.hindsight_service import HindsightService
-from backend.agents.investigation_agent import InvestigationAgent
-from backend.agents.agent_orchestrator import RecallAgent, MemoryAgent, ComplianceAgent, AuditAgent
+try:
+    from backend.models.schemas import (
+        IncidentBase, IncidentCreate, InvestigationResponse,
+        MemoryCommitRequest, AuditQueryRequest, AuditQueryResponse, ChatRequest
+    )
+    from backend.services.hindsight_service import HindsightService
+    from backend.agents.investigation_agent import InvestigationAgent
+    from backend.agents.agent_orchestrator import RecallAgent, MemoryAgent, ComplianceAgent, AuditAgent
+except ModuleNotFoundError:
+    from models.schemas import (
+        IncidentBase, IncidentCreate, InvestigationResponse,
+        MemoryCommitRequest, AuditQueryRequest, AuditQueryResponse, ChatRequest
+    )
+    from services.hindsight_service import HindsightService
+    from agents.investigation_agent import InvestigationAgent
+    from agents.agent_orchestrator import RecallAgent, MemoryAgent, ComplianceAgent, AuditAgent
 
 app = FastAPI(
     title="Memory Forge API",
