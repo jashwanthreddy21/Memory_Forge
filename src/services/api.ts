@@ -27,6 +27,8 @@ import {
 } from '../data/seedData';
 import { HindsightService } from './hindsightClient';
 
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
 class ApiClient {
   private localIncidents: Incident[] = [...INITIAL_INCIDENTS];
   private localMemories: HindsightMemory[] = [...INITIAL_MEMORIES];
@@ -39,7 +41,7 @@ class ApiClient {
 
   async getHealth() {
     try {
-      const res = await fetch('/api/health');
+      const res = await fetch(`${BASE_URL}/api/health`);
       if (res.ok) return await res.json();
     } catch (_) {}
     return {
@@ -55,7 +57,7 @@ class ApiClient {
 
   async getIncidents(): Promise<Incident[]> {
     try {
-      const res = await fetch('/api/incidents');
+      const res = await fetch(`${BASE_URL}/api/incidents`);
       if (res.ok) {
         const data = await res.json();
         this.localIncidents = data;
@@ -67,7 +69,7 @@ class ApiClient {
 
   async getIncident(id: string): Promise<{ incident: Incident; recalledMemories: any[] }> {
     try {
-      const res = await fetch(`/api/incidents/${id}`);
+      const res = await fetch(`${BASE_URL}/api/incidents/${id}`);
       if (res.ok) return await res.json();
     } catch (_) {}
     const inc = this.localIncidents.find(i => i.id === id) || this.localIncidents[0];
@@ -77,7 +79,7 @@ class ApiClient {
 
   async createIncident(incident: Partial<Incident>): Promise<Incident> {
     try {
-      const res = await fetch('/api/incidents', {
+      const res = await fetch(`${BASE_URL}/api/incidents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(incident)
@@ -112,7 +114,7 @@ class ApiClient {
 
   async investigateIncident(id: string): Promise<InvestigationResult> {
     try {
-      const res = await fetch(`/api/incidents/${id}/investigate`, { method: 'POST' });
+      const res = await fetch(`${BASE_URL}/api/incidents/${id}/investigate`, { method: 'POST' });
       if (res.ok) {
         const inv = await res.json();
         const inc = this.localIncidents.find(i => i.id === id);
@@ -184,7 +186,7 @@ class ApiClient {
 
   async commitToMemory(incidentId: string, body: any): Promise<HindsightMemory> {
     try {
-      const res = await fetch(`/api/incidents/${incidentId}/commit-memory`, {
+      const res = await fetch(`${BASE_URL}/api/incidents/${incidentId}/commit-memory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -229,7 +231,7 @@ class ApiClient {
 
   async getMemories(): Promise<HindsightMemory[]> {
     try {
-      const res = await fetch('/api/memories');
+      const res = await fetch(`${BASE_URL}/api/memories`);
       if (res.ok) {
         const data = await res.json();
         this.localMemories = data;
@@ -241,7 +243,7 @@ class ApiClient {
 
   async recallMemories(query: string): Promise<any[]> {
     try {
-      const res = await fetch('/api/memories/recall', {
+      const res = await fetch(`${BASE_URL}/api/memories/recall`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query })
@@ -256,7 +258,7 @@ class ApiClient {
 
   async getFindings(): Promise<Finding[]> {
     try {
-      const res = await fetch('/api/findings');
+      const res = await fetch(`${BASE_URL}/api/findings`);
       if (res.ok) return await res.json();
     } catch (_) {}
     return this.localFindings;
@@ -264,7 +266,7 @@ class ApiClient {
 
   async getRecurringFindings(): Promise<any[]> {
     try {
-      const res = await fetch('/api/findings/recurring');
+      const res = await fetch(`${BASE_URL}/api/findings/recurring`);
       if (res.ok) return await res.json();
     } catch (_) {}
     return [
@@ -297,7 +299,7 @@ class ApiClient {
 
   async getControls(): Promise<SecurityControl[]> {
     try {
-      const res = await fetch('/api/controls');
+      const res = await fetch(`${BASE_URL}/api/controls`);
       if (res.ok) {
         const data = await res.json();
         this.localControls = data;
@@ -309,7 +311,7 @@ class ApiClient {
 
   async getRemediations(): Promise<RemediationItem[]> {
     try {
-      const res = await fetch('/api/remediation');
+      const res = await fetch(`${BASE_URL}/api/remediation`);
       if (res.ok) {
         const data = await res.json();
         this.localRemediations = data;
@@ -321,7 +323,7 @@ class ApiClient {
 
   async updateRemediation(id: string, updates: Partial<RemediationItem>): Promise<RemediationItem> {
     try {
-      const res = await fetch(`/api/remediation/${id}`, {
+      const res = await fetch(`${BASE_URL}/api/remediation/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
@@ -342,7 +344,7 @@ class ApiClient {
 
   async getEvidence(): Promise<EvidenceRecord[]> {
     try {
-      const res = await fetch('/api/evidence');
+      const res = await fetch(`${BASE_URL}/api/evidence`);
       if (res.ok) {
         const data = await res.json();
         this.localEvidence = data;
@@ -354,7 +356,7 @@ class ApiClient {
 
   async addEvidence(ev: Partial<EvidenceRecord>): Promise<EvidenceRecord> {
     try {
-      const res = await fetch('/api/evidence', {
+      const res = await fetch(`${BASE_URL}/api/evidence`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ev)
@@ -385,7 +387,7 @@ class ApiClient {
 
   async queryAudit(query: string): Promise<AuditQueryResponse> {
     try {
-      const res = await fetch('/api/audit/query', {
+      const res = await fetch(`${BASE_URL}/api/audit/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query })
@@ -426,7 +428,7 @@ class ApiClient {
 
   async sendChatMessage(message: string): Promise<string> {
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch(`${BASE_URL}/api/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message })
@@ -446,7 +448,7 @@ class ApiClient {
 
   async generatePostMortem(incidentId: string): Promise<PostMortem> {
     try {
-      const res = await fetch('/api/postmortems/generate', {
+      const res = await fetch(`${BASE_URL}/api/postmortems/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ incidentId })
@@ -458,7 +460,7 @@ class ApiClient {
 
   async getTimeline(): Promise<TimelineEvent[]> {
     try {
-      const res = await fetch('/api/timeline');
+      const res = await fetch(`${BASE_URL}/api/timeline`);
       if (res.ok) return await res.json();
     } catch (_) {}
     return this.localTimeline;
@@ -466,7 +468,7 @@ class ApiClient {
 
   async getDatabaseStats(): Promise<any> {
     try {
-      const res = await fetch('/api/database/stats');
+      const res = await fetch(`${BASE_URL}/api/database/stats`);
       if (res.ok) return await res.json();
     } catch (_) {}
     return {
@@ -481,7 +483,7 @@ class ApiClient {
 
   async askIncidentAi(incidentId: string, question: string): Promise<string> {
     try {
-      const res = await fetch(`/api/incidents/${incidentId}/ai-chat`, {
+      const res = await fetch(`${BASE_URL}/api/incidents/${incidentId}/ai-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question })
@@ -496,7 +498,7 @@ class ApiClient {
 
   async resetDemo(): Promise<void> {
     try {
-      await fetch('/api/demo/reset', { method: 'POST' });
+      await fetch(`${BASE_URL}/api/demo/reset`, { method: 'POST' });
     } catch (_) {}
     this.localIncidents = JSON.parse(JSON.stringify(INITIAL_INCIDENTS));
     this.localMemories = JSON.parse(JSON.stringify(INITIAL_MEMORIES));
