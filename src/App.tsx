@@ -47,6 +47,7 @@ export default function App() {
   const [currentInvestigation, setCurrentInvestigation] = useState<InvestigationResult | null>(null);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [currentRole, setCurrentRole] = useState<string>('Security Analyst');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -206,6 +207,8 @@ export default function App() {
         onSelectTab={setActiveTab}
         openIncidentsCount={incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CLOSED').length}
         recurringFindingsCount={recurringFindings.length}
+        isMobileOpen={isMobileMenuOpen}
+        onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Main Canvas Area */}
@@ -219,10 +222,11 @@ export default function App() {
           onChangeRole={setCurrentRole}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)}
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-950">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-950">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && (
               <DashboardView

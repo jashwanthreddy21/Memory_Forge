@@ -72,11 +72,11 @@ export const HistoricalRecallTransition: React.FC<HistoricalRecallTransitionProp
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header / Tracker */}
-      <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4 mb-6">
         <div>
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-cyan-400 animate-pulse" />
-            <span className="text-sm font-bold tracking-wider text-slate-100 uppercase">
+            <Brain className="w-5 h-5 text-cyan-400 animate-pulse shrink-0" />
+            <span className="text-xs sm:text-sm font-bold tracking-wider text-slate-100 uppercase">
               Hindsight Historical Recall Engine
             </span>
           </div>
@@ -86,17 +86,17 @@ export const HistoricalRecallTransition: React.FC<HistoricalRecallTransitionProp
         </div>
 
         {/* Visual Progress Steps */}
-        <div className="flex items-center gap-1 text-[11px] font-mono">
+        <div className="flex items-center gap-1 text-[10px] sm:text-[11px] font-mono overflow-x-auto max-w-full py-1">
           {[
             { num: 1, label: 'Analyze' },
-            { num: 2, label: 'Search Hindsight' },
+            { num: 2, label: 'Search' },
             { num: 3, label: 'Recall' },
-            { num: 4, label: 'Inject Context' },
+            { num: 4, label: 'Context' },
             { num: 5, label: 'Ready' }
           ].map((s) => (
             <div
               key={s.num}
-              className={`px-2 py-0.5 rounded text-xs transition-all ${
+              className={`px-2 py-0.5 rounded text-[10px] sm:text-xs shrink-0 transition-all ${
                 currentStep >= s.num
                   ? currentStep === s.num
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'

@@ -97,9 +97,94 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
         </div>
       </div>
 
-      {/* Incidents Table / List */}
+      {/* Incidents Table for Desktop / Cards for Mobile */}
       <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
+        {/* Mobile View: High-density interactive cards */}
+        <div className="md:hidden divide-y divide-slate-800/80">
+          {filtered.map(inc => {
+            const isSpecialDemo = inc.id === 'INC-1038' || inc.id === 'INC-1024';
+
+            return (
+              <div
+                key={inc.id}
+                onClick={() => onSelectIncident(inc.id)}
+                className="p-3.5 hover:bg-slate-900/60 active:bg-slate-900 transition-colors cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-cyan-400 text-xs">{inc.id}</span>
+                    {isSpecialDemo && (
+                      <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                        Demo
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      inc.severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' :
+                      inc.severity === 'HIGH' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                      inc.severity === 'MEDIUM' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                      'bg-slate-800 text-slate-400'
+                    }`}>
+                      {inc.severity}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                      inc.status === 'RESOLVED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      inc.status === 'INVESTIGATING' ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 animate-pulse' :
+                      'bg-slate-800 text-slate-300'
+                    }`}>
+                      {inc.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-slate-100 text-xs leading-snug">
+                    {inc.title}
+                  </h4>
+                  <div className="text-[11px] text-slate-400 font-mono mt-1 flex flex-wrap items-center gap-1.5">
+                    <span className="text-cyan-400/90">{inc.affectedAsset}</span>
+                    <span>·</span>
+                    <span className="text-slate-500">{inc.environment}</span>
+                    <span>·</span>
+                    <span className="text-slate-500">{inc.category}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-900 text-xs">
+                  <div>
+                    {inc.memoryCommitted ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Hindsight Retained</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono text-slate-500">
+                        <Clock className="w-3 h-3" />
+                        <span>Uncommitted</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectIncident(inc.id);
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded bg-blue-600/30 hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 font-semibold text-xs border border-blue-500/40 transition-all cursor-pointer"
+                  >
+                    <Cpu className="w-3.5 h-3.5" />
+                    <span>Investigate</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Comprehensive Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-900/80 text-slate-400 font-mono uppercase text-[11px] border-b border-slate-800">
               <tr>
