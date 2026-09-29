@@ -1,0 +1,686 @@
+import {
+  Incident,
+  HindsightMemory,
+  Finding,
+  SecurityControl,
+  RemediationItem,
+  EvidenceRecord,
+  TimelineEvent,
+  PostMortem
+} from '../types';
+
+export const INITIAL_CONTROLS: SecurityControl[] = [
+  {
+    id: 'ctrl-ac',
+    code: 'AC-01',
+    name: 'Access Control',
+    category: 'Identity & Access',
+    description: 'Enforce principle of least privilege, public exposure prevention, and scoped role assignments.',
+    frameworks: ['SOC 2 CC6.1', 'ISO 27001 A.9.1', 'NIST CSF PR.AC-1'],
+    totalFindings: 8,
+    resolvedFindings: 5,
+    inProgressFindings: 2,
+    openFindings: 1,
+    evidenceCount: 23,
+    lastOccurrence: '2026-09-24',
+    healthStatus: 'CRITICAL_DRIFT',
+    relatedIncidentIds: ['INC-1007', 'INC-1024', 'INC-1038', 'INC-1041', 'INC-1044', 'INC-1049', 'INC-1052', 'INC-1055']
+  },
+  {
+    id: 'ctrl-iam',
+    code: 'IAM-02',
+    name: 'Identity Management',
+    category: 'Identity & Access',
+    description: 'Multi-factor authentication, key rotation, and automated credential expiration for human & service identities.',
+    frameworks: ['SOC 2 CC6.2', 'ISO 27001 A.9.2', 'NIST CSF PR.AC-3'],
+    totalFindings: 4,
+    resolvedFindings: 3,
+    inProgressFindings: 1,
+    openFindings: 0,
+    evidenceCount: 14,
+    lastOccurrence: '2026-08-11',
+    healthStatus: 'HEALTHY',
+    relatedIncidentIds: ['INC-1007', 'INC-1021']
+  },
+  {
+    id: 'ctrl-log',
+    code: 'LOG-03',
+    name: 'Logging & Monitoring',
+    category: 'Detection & Response',
+    description: 'Centralized audit logging across cloud control planes, immutable storage, and near-real-time alerting.',
+    frameworks: ['SOC 2 CC7.2', 'ISO 27001 A.12.4', 'NIST CSF DE.AE-1'],
+    totalFindings: 5,
+    resolvedFindings: 4,
+    inProgressFindings: 1,
+    openFindings: 0,
+    evidenceCount: 19,
+    lastOccurrence: '2026-07-29',
+    healthStatus: 'HEALTHY',
+    relatedIncidentIds: ['INC-1030', 'INC-1035']
+  },
+  {
+    id: 'ctrl-dp',
+    code: 'DP-04',
+    name: 'Data Protection',
+    category: 'Data Security',
+    description: 'Encryption at rest and in transit, customer-managed keys, automated bucket block public access baseline.',
+    frameworks: ['SOC 2 CC6.6', 'ISO 27001 A.10.1', 'NIST CSF PR.DS-1'],
+    totalFindings: 6,
+    resolvedFindings: 4,
+    inProgressFindings: 2,
+    openFindings: 0,
+    evidenceCount: 17,
+    lastOccurrence: '2026-09-18',
+    healthStatus: 'NEEDS_ATTENTION',
+    relatedIncidentIds: ['INC-1015', 'INC-1024', 'INC-1038']
+  },
+  {
+    id: 'ctrl-vm',
+    code: 'VM-05',
+    name: 'Vulnerability Management',
+    category: 'Threat & Vulnerability',
+    description: 'Continuous container, host, and dependency scanning with SLA-driven patch automation.',
+    frameworks: ['SOC 2 CC7.1', 'ISO 27001 A.12.6', 'NIST CSF PR.IP-12'],
+    totalFindings: 7,
+    resolvedFindings: 6,
+    inProgressFindings: 1,
+    openFindings: 0,
+    evidenceCount: 28,
+    lastOccurrence: '2026-08-04',
+    healthStatus: 'HEALTHY',
+    relatedIncidentIds: ['INC-1012', 'INC-1028']
+  },
+  {
+    id: 'ctrl-ir',
+    code: 'IR-06',
+    name: 'Incident Response',
+    category: 'Response & Recovery',
+    description: 'Tested playbook execution, automated containment, forensic snapshot retention, and post-mortem review.',
+    frameworks: ['SOC 2 CC7.3', 'ISO 27001 A.16.1', 'NIST CSF RS.RP-1'],
+    totalFindings: 3,
+    resolvedFindings: 3,
+    inProgressFindings: 0,
+    openFindings: 0,
+    evidenceCount: 31,
+    lastOccurrence: '2026-09-02',
+    healthStatus: 'HEALTHY',
+    relatedIncidentIds: ['INC-1024', 'INC-1030']
+  },
+  {
+    id: 'ctrl-cm',
+    code: 'CM-07',
+    name: 'Configuration Management',
+    category: 'Governance & Infrastructure',
+    description: 'Infrastructure as Code drift detection, automated policy-as-code guardrails, and change authorization.',
+    frameworks: ['SOC 2 CC6.8', 'ISO 27001 A.12.1', 'NIST CSF PR.IP-1'],
+    totalFindings: 5,
+    resolvedFindings: 3,
+    inProgressFindings: 1,
+    openFindings: 1,
+    evidenceCount: 16,
+    lastOccurrence: '2026-09-22',
+    healthStatus: 'NEEDS_ATTENTION',
+    relatedIncidentIds: ['INC-1024', 'INC-1038']
+  }
+];
+
+export const INITIAL_INCIDENTS: Incident[] = [
+  {
+    id: 'INC-1007',
+    title: 'Excessive IAM Permissions on Deployment Pipeline',
+    description: 'CI/CD runner service account discovered with wildcard Administrative access on production cloud assets.',
+    severity: 'HIGH',
+    category: 'Cloud Security',
+    affectedAsset: 'cicd-deploy-runner-sa',
+    environment: 'production',
+    detectionSource: 'Cloud Security Scanner',
+    detectedAt: '2026-01-14T09:30:00Z',
+    assignedAnalyst: 'Sarah Chen, Lead SecOps',
+    status: 'RESOLVED',
+    evidence: 'IAM policy JSON export and audit log anomaly report.',
+    tags: ['IAM', 'CI/CD', 'Least-Privilege', 'Production'],
+    investigationId: 'INV-1007',
+    memoryCommitted: true,
+    recalledMemoryIds: []
+  },
+  {
+    id: 'INC-1015',
+    title: 'Public Database Exposure via Security Group Ingress',
+    description: 'PostgreSQL read-replica security group was modified to allow 0.0.0.0/0 on port 5432 during staging debug session.',
+    severity: 'CRITICAL',
+    category: 'Infrastructure',
+    affectedAsset: 'prod-replica-pg-01',
+    environment: 'production',
+    detectionSource: 'Network Flow Monitor',
+    detectedAt: '2026-02-02T14:15:00Z',
+    assignedAnalyst: 'Marcus Vance, Senior Security Engineer',
+    status: 'RESOLVED',
+    evidence: 'VPC Flow logs and Terraform state drift delta.',
+    tags: ['Network', 'PostgreSQL', 'Security-Group', 'Public-IP'],
+    investigationId: 'INV-1015',
+    memoryCommitted: true,
+    recalledMemoryIds: ['MEM-1007']
+  },
+  {
+    id: 'INC-1024',
+    title: 'Public Cloud Storage Exposure',
+    description: 'A production storage bucket was discovered with public read access. Cloud storage scanner flagged unauthenticated GET access.',
+    severity: 'HIGH',
+    category: 'Cloud Security',
+    affectedAsset: 'customer-data-bucket',
+    environment: 'production',
+    detectionSource: 'Cloud Security Scanner',
+    detectedAt: '2026-02-18T11:45:00Z',
+    assignedAnalyst: 'Alex Rivera, Incident Responder',
+    status: 'RESOLVED',
+    evidence: 'Configuration scan detected public read access. HTTP 200 returned on unauthenticated objects.',
+    tags: ['Cloud Storage', 'Access Policy', 'S3/GCS', 'Public Access'],
+    investigationId: 'INV-1024',
+    memoryCommitted: true,
+    recalledMemoryIds: ['MEM-1007', 'MEM-1015']
+  },
+  {
+    id: 'INC-1030',
+    title: 'Missing Security Audit Logging on Storage Events',
+    description: 'Audit revealed data-level read/write telemetry was deactivated on newly provisioned cloud storage buckets.',
+    severity: 'MEDIUM',
+    category: 'Governance & Auditing',
+    affectedAsset: 'analytics-lake-us-east',
+    environment: 'production',
+    detectionSource: 'Compliance Conformance Engine',
+    detectedAt: '2026-03-10T16:20:00Z',
+    assignedAnalyst: 'Elena Rostov, Compliance Analyst',
+    status: 'RESOLVED',
+    evidence: 'API event stream verified 0 audit records emitted over 48-hour window.',
+    tags: ['Audit', 'Logging', 'CloudTrail', 'Storage'],
+    investigationId: 'INV-1030',
+    memoryCommitted: true,
+    recalledMemoryIds: ['MEM-1024']
+  },
+  {
+    id: 'INC-1038',
+    title: 'Public Cloud Storage Exposure on Customer Reports',
+    description: 'A production storage bucket "customer-reports-bucket" was discovered with public read access enabled after deployment script execution.',
+    severity: 'HIGH',
+    category: 'Cloud Security',
+    affectedAsset: 'customer-reports-bucket',
+    environment: 'production',
+    detectionSource: 'Cloud Security Scanner',
+    detectedAt: '2026-09-28T21:10:00Z',
+    assignedAnalyst: 'Alex Rivera, Incident Responder',
+    status: 'OPEN',
+    evidence: 'Automated policy validator flagged AllUsers read permission on bucket root ACL.',
+    tags: ['Cloud Storage', 'Public Exposure', 'IAM Policy', 'Production'],
+    investigationId: 'INV-1038',
+    memoryCommitted: false,
+    recalledMemoryIds: ['MEM-1024', 'MEM-1007', 'MEM-1015']
+  }
+];
+
+export const INITIAL_MEMORIES: HindsightMemory[] = [
+  {
+    id: 'MEM-1007',
+    sourceIncidentId: 'INC-1007',
+    title: 'Excessive IAM Permissions on Deployment Pipeline',
+    type: 'INCIDENT',
+    summary: 'CI/CD pipeline was granted overly permissive roles (Owner/Admin) instead of scoped service tokens, allowing unrestricted resource mutations.',
+    rootCause: 'Lack of automated IAM permission boundary enforcement in Terraform pipeline template.',
+    securityControl: 'Access Control',
+    affectedAsset: 'cicd-deploy-runner-sa',
+    remediation: [
+      'Revoke Administrative permissions from runner',
+      'Deploy custom minimal role definition with exact deployment capabilities',
+      'Implement OIDC federated credentials replacing static service account keys'
+    ],
+    evidence: [
+      'EVD-101: IAM policy JSON baseline comparison',
+      'EVD-102: GitHub Actions workflow authentication audit log'
+    ],
+    severity: 'HIGH',
+    status: 'ACTIVE',
+    lessonsLearned: [
+      'Developers defaulted to Admin role when staging builds failed on permission denials.',
+      'Mandatory pre-commit linter required to catch broad IAM wildcards.'
+    ],
+    tags: ['IAM', 'Access Control', 'Least Privilege'],
+    createdAt: '2026-01-16T17:00:00Z',
+    relationships: [
+      { targetId: 'ctrl-ac', targetType: 'CONTROL', relation: 'MAPS_TO' },
+      { targetId: 'REM-0019', targetType: 'REMEDIATION', relation: 'REMEDIATED_BY' }
+    ]
+  },
+  {
+    id: 'MEM-1015',
+    sourceIncidentId: 'INC-1015',
+    title: 'Public Database Exposure via Security Group Ingress',
+    type: 'INCIDENT',
+    summary: 'Staging debugging session opened port 5432 to 0.0.0.0/0 and was merged to production via hotfix branch bypassing peer review.',
+    rootCause: 'Security group ingress rule override without branch protection review.',
+    securityControl: 'Data Protection',
+    affectedAsset: 'prod-replica-pg-01',
+    remediation: [
+      'Immediate revocation of 0.0.0.0/0 ingress rule',
+      'Configured VPN bastion host for internal database administrative access',
+      'Enforced Terraform Cloud drift blocking on production security groups'
+    ],
+    evidence: [
+      'EVD-201: AWS Security Group ingress modification log',
+      'EVD-202: VPC Flow connection attempt forensics'
+    ],
+    severity: 'CRITICAL',
+    status: 'ACTIVE',
+    lessonsLearned: [
+      'Urgent developer hotfixes require automated guardrail blocking even during triage.',
+      'Database ports must NEVER have public IP interfaces assigned.'
+    ],
+    tags: ['Network Security', 'PostgreSQL', 'Drift Detection'],
+    createdAt: '2026-02-04T12:00:00Z',
+    relationships: [
+      { targetId: 'ctrl-dp', targetType: 'CONTROL', relation: 'MAPS_TO' },
+      { targetId: 'ctrl-ac', targetType: 'CONTROL', relation: 'RELATED_TO' }
+    ]
+  },
+  {
+    id: 'MEM-1024',
+    sourceIncidentId: 'INC-1024',
+    title: 'Public Cloud Storage Exposure',
+    type: 'INCIDENT',
+    summary: 'A production storage bucket customer-data-bucket was provisioned with public read access due to an inherited IAM ACL template error.',
+    rootCause: 'Incorrect access policy configuration exposed the storage bucket to public read access. Cloud formation template failed to override default bucket ACL.',
+    securityControl: 'Access Control',
+    affectedAsset: 'customer-data-bucket',
+    remediation: [
+      'Remove public access immediately via bucket policy patch',
+      'Review organizational IAM policy across all cloud storage repositories',
+      'Enable preventive organization-level Block Public Access (BPA) protection',
+      'Enable continuous cloud configuration monitoring with automated alerts',
+      'Validate access boundaries post-remediation using automated script'
+    ],
+    evidence: [
+      'EVD-301: Configuration snapshot showing public read ACL enabled',
+      'EVD-302: CloudTrail S3 PutBucketAcl API invocation trace',
+      'EVD-303: Post-remediation verification scan confirmation'
+    ],
+    severity: 'HIGH',
+    status: 'ACTIVE',
+    lessonsLearned: [
+      'Account-level Public Access Block must be enforced by org policy so individual buckets cannot be inadvertently exposed.',
+      'Terraform modules must hardcode block_public_acls = true as an immutable argument.'
+    ],
+    tags: ['Cloud Storage', 'Access Policy', 'Public Access', 'IAM', 'Remediation'],
+    createdAt: '2026-02-20T10:30:00Z',
+    relationships: [
+      { targetId: 'ctrl-ac', targetType: 'CONTROL', relation: 'MAPS_TO' },
+      { targetId: 'ctrl-dp', targetType: 'CONTROL', relation: 'RELATED_TO' },
+      { targetId: 'REM-0042', targetType: 'REMEDIATION', relation: 'REMEDIATED_BY' },
+      { targetId: 'EVD-301', targetType: 'EVIDENCE', relation: 'SUPPORTED_BY' }
+    ]
+  },
+  {
+    id: 'MEM-1030',
+    sourceIncidentId: 'INC-1030',
+    title: 'Missing Security Audit Logging on Storage Events',
+    type: 'INCIDENT',
+    summary: 'Storage buckets provisioned by data analytics team omitted object-level read/write audit logging, violating SOC 2 CC7.2 monitoring requirements.',
+    rootCause: 'Provisioning script did not attach CloudTrail data event logging filter.',
+    securityControl: 'Logging & Monitoring',
+    affectedAsset: 'analytics-lake-us-east',
+    remediation: [
+      'Enabled CloudWatch & CloudTrail data event logging with 365-day retention',
+      'Configured SIEM ingestion rule for S3 DeleteObject and GetObject operations',
+      'Created drift alarm for any bucket created without active logging'
+    ],
+    evidence: [
+      'EVD-401: CloudTrail configuration manifest',
+      'EVD-402: Compliance scanner audit pass certificate'
+    ],
+    severity: 'MEDIUM',
+    status: 'ACTIVE',
+    lessonsLearned: [
+      'Data engineering pipelines had separate IaC modules not audited by SecOps team.',
+      'Centralized module repository now mandated for all teams.'
+    ],
+    tags: ['Logging', 'Compliance', 'Audit Trail'],
+    createdAt: '2026-03-12T15:00:00Z',
+    relationships: [
+      { targetId: 'ctrl-log', targetType: 'CONTROL', relation: 'MAPS_TO' },
+      { targetId: 'ctrl-ir', targetType: 'CONTROL', relation: 'RELATED_TO' }
+    ]
+  }
+];
+
+export const INITIAL_FINDINGS: Finding[] = [
+  {
+    id: 'FND-081',
+    incidentId: 'INC-1024',
+    title: 'Misconfigured IAM Policy Allowed Public Storage Read',
+    rootCause: 'Incorrect access policy configuration exposed the storage bucket to public read access.',
+    securityControl: 'Access Control',
+    severity: 'HIGH',
+    status: 'RESOLVED',
+    firstSeen: '2026-01-14',
+    lastSeen: '2026-02-18',
+    occurrenceCount: 6,
+    isRecurring: true,
+    remediationIds: ['REM-0042']
+  },
+  {
+    id: 'FND-082',
+    incidentId: 'INC-1038',
+    title: 'Recurring Public Exposure via Unscoped Storage Bucket ACL',
+    rootCause: 'Deployment automation bypassed organization-level Public Access Block.',
+    securityControl: 'Access Control',
+    severity: 'HIGH',
+    status: 'OPEN',
+    firstSeen: '2026-01-14',
+    lastSeen: '2026-09-28',
+    occurrenceCount: 8,
+    isRecurring: true,
+    remediationIds: ['REM-0051']
+  },
+  {
+    id: 'FND-075',
+    incidentId: 'INC-1015',
+    title: 'Security Group Ingress Permitted 0.0.0.0/0 on Port 5432',
+    rootCause: 'Ad-hoc staging rule committed directly to production environment.',
+    securityControl: 'Data Protection',
+    severity: 'CRITICAL',
+    status: 'RESOLVED',
+    firstSeen: '2026-02-02',
+    lastSeen: '2026-02-02',
+    occurrenceCount: 2,
+    isRecurring: false,
+    remediationIds: ['REM-0031']
+  },
+  {
+    id: 'FND-063',
+    incidentId: 'INC-1030',
+    title: 'Missing Audit Log Event Filter on Storage Buckets',
+    rootCause: 'IaC module omitted CloudTrail event recording.',
+    securityControl: 'Logging & Monitoring',
+    severity: 'MEDIUM',
+    status: 'RESOLVED',
+    firstSeen: '2026-03-10',
+    lastSeen: '2026-03-10',
+    occurrenceCount: 3,
+    isRecurring: false,
+    remediationIds: ['REM-0038']
+  }
+];
+
+export const INITIAL_REMEDIATIONS: RemediationItem[] = [
+  {
+    id: 'REM-0042',
+    description: 'Review IAM policy configuration and enforce account-wide block public access',
+    incidentId: 'INC-1024',
+    rootCause: 'Incorrect access policy configuration exposed storage bucket.',
+    control: 'Access Control',
+    owner: 'Alex Rivera (SecOps)',
+    priority: 'HIGH',
+    status: 'COMPLETED',
+    createdDate: '2026-02-18',
+    dueDate: '2026-02-22',
+    completedDate: '2026-02-20',
+    evidence: 'EVD-301: Configuration snapshot, EVD-303: Post-remediation verification scan',
+    verificationNotes: 'Verified via automated compliance scan. All public buckets resolved.'
+  },
+  {
+    id: 'REM-0051',
+    description: 'Enforce preventive IAM service control policy (SCP) blocking public storage bucket ACLs',
+    incidentId: 'INC-1038',
+    rootCause: 'Recurring access policy misconfiguration in deployment pipeline.',
+    control: 'Access Control',
+    owner: 'Sarah Chen (Lead SecOps)',
+    priority: 'CRITICAL',
+    status: 'IN_PROGRESS',
+    createdDate: '2026-09-28',
+    dueDate: '2026-09-30',
+    evidence: 'EVD-501: Automated policy scanner finding report',
+    verificationNotes: 'Draft SCP under review in staging cloud org.'
+  },
+  {
+    id: 'REM-0031',
+    description: 'Lock down PostgreSQL security group and remove public CIDR blocks',
+    incidentId: 'INC-1015',
+    rootCause: 'Unrestricted security group 0.0.0.0/0 on port 5432.',
+    control: 'Data Protection',
+    owner: 'Marcus Vance (Senior SecEng)',
+    priority: 'CRITICAL',
+    status: 'VERIFIED',
+    createdDate: '2026-02-02',
+    dueDate: '2026-02-03',
+    completedDate: '2026-02-02',
+    evidence: 'EVD-201: AWS Security Group ingress modification log',
+    verificationNotes: 'Port scan verified 0 open ingress listeners from external internet.'
+  },
+  {
+    id: 'REM-0038',
+    description: 'Attach centralized CloudTrail data event logging to analytics storage lakes',
+    incidentId: 'INC-1030',
+    rootCause: 'Logging filter disabled in provisioning template.',
+    control: 'Logging & Monitoring',
+    owner: 'Elena Rostov (Compliance)',
+    priority: 'MEDIUM',
+    status: 'COMPLETED',
+    createdDate: '2026-03-10',
+    dueDate: '2026-03-15',
+    completedDate: '2026-03-12',
+    evidence: 'EVD-401: CloudTrail configuration manifest',
+    verificationNotes: 'Validated 10,000+ synthetic audit events ingested successfully.'
+  }
+];
+
+export const INITIAL_EVIDENCE: EvidenceRecord[] = [
+  {
+    id: 'EVD-101',
+    type: 'CONFIGURATION_SNAPSHOT',
+    title: 'IAM Policy JSON Export - cicd-deploy-runner-sa',
+    source: 'GCP IAM API / Terraform State',
+    relatedIncidentId: 'INC-1007',
+    relatedControl: 'Access Control',
+    relatedFindingId: 'FND-081',
+    uploadedAt: '2026-01-14T10:15:00Z',
+    status: 'VERIFIED',
+    sha256Hash: 'a8b79e2c40ff8719bc42de72d3f9e2b10a59f6cd94e219ba38fe10283c79a1f2',
+    description: 'Export of IAM role bindings showing roles/owner bound to the automated service runner.',
+    size: '14.2 KB'
+  },
+  {
+    id: 'EVD-201',
+    type: 'SECURITY_SCAN',
+    title: 'VPC Security Group Drift Report - prod-replica-pg-01',
+    source: 'Prisma Cloud CSPM',
+    relatedIncidentId: 'INC-1015',
+    relatedControl: 'Data Protection',
+    relatedFindingId: 'FND-075',
+    uploadedAt: '2026-02-02T14:40:00Z',
+    status: 'VERIFIED',
+    sha256Hash: '4f9920b7c1264eef88219d38c64bb93f18e90aa27845612c98d64821a37c98b4',
+    description: 'Continuous network scanner alert capturing security group sg-0994f1 opened to 0.0.0.0/0.',
+    size: '28.6 KB'
+  },
+  {
+    id: 'EVD-301',
+    type: 'CONFIGURATION_SNAPSHOT',
+    title: 'Storage Bucket ACL Snapshot - customer-data-bucket',
+    source: 'AWS CLI / S3 API GetBucketAcl',
+    relatedIncidentId: 'INC-1024',
+    relatedControl: 'Access Control',
+    relatedFindingId: 'FND-081',
+    uploadedAt: '2026-02-18T12:00:00Z',
+    status: 'VERIFIED',
+    sha256Hash: '7e14a8219f8b449176dc2278401aa8920bc98374aef17293847291a82910fae1',
+    description: 'Raw JSON showing URI "http://acs.amazonaws.com/groups/global/AllUsers" with READ permission granted.',
+    size: '8.4 KB'
+  },
+  {
+    id: 'EVD-302',
+    type: 'LOG_EXTRACT',
+    title: 'CloudTrail Event Trace - PutBucketAcl Invocation',
+    source: 'AWS CloudTrail Event History',
+    relatedIncidentId: 'INC-1024',
+    relatedControl: 'Access Control',
+    relatedFindingId: 'FND-081',
+    uploadedAt: '2026-02-18T12:35:00Z',
+    status: 'VERIFIED',
+    sha256Hash: 'bc41908273615fa29048aeb7162983741b6c89104fa8291873491028374829a1',
+    description: 'CloudTrail trace revealing pipeline role assumed by Terraform job updating bucket permissions.',
+    size: '42.1 KB'
+  },
+  {
+    id: 'EVD-303',
+    type: 'REMEDIATION_PROOF',
+    title: 'Post-Remediation Verification Scan - customer-data-bucket',
+    source: 'Wiz Automated CSPM Policy Check',
+    relatedIncidentId: 'INC-1024',
+    relatedControl: 'Access Control',
+    relatedFindingId: 'FND-081',
+    uploadedAt: '2026-02-20T10:45:00Z',
+    status: 'VERIFIED',
+    sha256Hash: '3948ab1726f5829103847acb29184719283746192847aefbc192837465192837',
+    description: 'Clean scan log verifying public access block active and unauthenticated requests return 403 Forbidden.',
+    size: '19.5 KB'
+  },
+  {
+    id: 'EVD-401',
+    type: 'CONFIGURATION_SNAPSHOT',
+    title: 'CloudTrail Logging Trail Audit Manifest',
+    source: 'AWS Organizations CloudTrail API',
+    relatedIncidentId: 'INC-1030',
+    relatedControl: 'Logging & Monitoring',
+    relatedFindingId: 'FND-063',
+    uploadedAt: '2026-03-11T09:00:00Z',
+    status: 'VERIFIED',
+    sha256Hash: '918273645aebcf918273645aebcf918273645aebcf918273645aebcf91827364',
+    description: 'Updated CloudTrail trail configuration including S3 data-event logging for all production buckets.',
+    size: '12.8 KB'
+  },
+  {
+    id: 'EVD-501',
+    type: 'SECURITY_SCAN',
+    title: 'Public Access Alert - customer-reports-bucket',
+    source: 'Cloud Security Scanner Automated Daemon',
+    relatedIncidentId: 'INC-1038',
+    relatedControl: 'Access Control',
+    relatedFindingId: 'FND-082',
+    uploadedAt: '2026-09-28T21:15:00Z',
+    status: 'PENDING_REVIEW',
+    sha256Hash: '1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b',
+    description: 'Scanner detected customer reports export folder accessible via public URL without bearer token.',
+    size: '16.4 KB'
+  }
+];
+
+export const INITIAL_TIMELINE: TimelineEvent[] = [
+  {
+    id: 'TL-01',
+    date: 'Jan 14, 2026',
+    title: 'Incident INC-1007: Excessive IAM Permissions Discovered',
+    type: 'INCIDENT',
+    description: 'CI/CD pipeline was granted broad administrative privileges during initial automation deployment.',
+    relatedId: 'INC-1007',
+    severity: 'HIGH',
+    highlightText: 'First observed occurrence of IAM privilege drift in automation pipelines.'
+  },
+  {
+    id: 'TL-02',
+    date: 'Feb 02, 2026',
+    title: 'Incident INC-1015: Public Database Exposure Remediation',
+    type: 'REMEDIATION',
+    description: 'Staging port 5432 exposure remediated within 2 hours. Bastion host enforced.',
+    relatedId: 'INC-1015',
+    severity: 'CRITICAL',
+    highlightText: 'Network security guardrails deployed; zero packet loss recorded.'
+  },
+  {
+    id: 'TL-03',
+    date: 'Feb 18, 2026',
+    title: 'Incident INC-1024: Public Cloud Storage Exposure',
+    type: 'INCIDENT',
+    description: 'Production bucket customer-data-bucket discovered with public read ACL.',
+    relatedId: 'INC-1024',
+    severity: 'HIGH',
+    highlightText: 'Root cause identified: Incorrect access policy configuration in cloud template.'
+  },
+  {
+    id: 'TL-04',
+    date: 'Feb 20, 2026',
+    title: 'Remediation REM-0042 Committed to Hindsight Memory',
+    type: 'REMEDIATION',
+    description: 'Public access removed, IAM policy reviewed, and preventive monitoring enabled.',
+    relatedId: 'MEM-1024',
+    highlightText: 'Hindsight preserved remediation sequence & evidence proof for future investigations.'
+  },
+  {
+    id: 'TL-05',
+    date: 'Apr 12, 2026',
+    title: 'AI Detects Recurring Pattern: Access Control Drift',
+    type: 'PATTERN_DETECTED',
+    description: 'Memory Forge correlated repeated IAM and storage policy anomalies across 8 historical incidents.',
+    highlightText: 'System flagged Access Control as high-frequency drift zone across CI/CD scripts.'
+  },
+  {
+    id: 'TL-06',
+    date: 'May 04, 2026',
+    title: 'Preventive Control Added: SCP & Pre-commit Linting',
+    type: 'CONTROL_ADDED',
+    description: 'Security team codified automated block-public-access into root cloud organizational policy.',
+    relatedId: 'ctrl-ac',
+    highlightText: 'Organizational learning converted historical incident knowledge into preventive defense.'
+  },
+  {
+    id: 'TL-07',
+    date: 'Jun 19, 2026',
+    title: 'SOC 2 Type II Audit Assistant Verification',
+    type: 'AUDIT_VERIFIED',
+    description: 'Auditor queried Access Control evidence chain; 23 linked artifacts validated with zero manual pull.',
+    highlightText: 'Audit readiness score increased from 61% to 84%.'
+  },
+  {
+    id: 'TL-08',
+    date: 'Sep 28, 2026',
+    title: 'Incident INC-1038: Historical Recall Injected',
+    type: 'INCIDENT',
+    description: 'New storage exposure triggers 92% semantic match against INC-1024; remediation recommended instantly.',
+    relatedId: 'INC-1038',
+    severity: 'HIGH',
+    highlightText: 'Investigation accelerated from 4.2 hours to 90 seconds using Hindsight memory.'
+  }
+];
+
+export const INITIAL_POSTMORTEMS: PostMortem[] = [
+  {
+    id: 'PM-1024',
+    incidentId: 'INC-1024',
+    title: 'Post-Mortem: Public Cloud Storage Exposure (customer-data-bucket)',
+    summary: 'On February 18, 2026, an automated cloud security scan identified public read accessibility on customer-data-bucket. Immediate containment revoked public read privileges within 18 minutes. Comprehensive investigation determined an inherited IAM template failed to enforce block public access.',
+    timeline: [
+      { time: '2026-02-18 11:45 UTC', event: 'Cloud Security Scanner triggered automated alert on bucket customer-data-bucket' },
+      { time: '2026-02-18 11:58 UTC', event: 'SecOps analyst Alex Rivera confirmed public object readable over HTTPS' },
+      { time: '2026-02-18 12:03 UTC', event: 'Public access removed via emergency AWS CLI bucket-policy override' },
+      { time: '2026-02-18 14:30 UTC', event: 'CloudTrail log review traced policy change to automated CI runner execution' },
+      { time: '2026-02-20 10:30 UTC', event: 'Verification scan passed; Hindsight memory MEM-1024 generated and committed' }
+    ],
+    rootCause: 'Incorrect access policy configuration exposed the storage bucket to public read access. CI/CD pipeline template did not set block_public_acls = true.',
+    impact: 'Storage bucket was publicly accessible for approximately 2 hours. Access logs confirmed zero external downloads of sensitive PII; only healthcheck objects accessed.',
+    detection: 'Automated CSPM scanner detected misconfiguration within 12 minutes of deployment.',
+    response: 'Mean time to acknowledge (MTTA): 13 minutes. Mean time to remediate (MTTR): 18 minutes.',
+    remediation: [
+      'Removed public read ACL from customer-data-bucket',
+      'Audited all 42 cloud storage buckets in production AWS organization',
+      'Configured account-wide Block Public Access setting'
+    ],
+    lessonsLearned: [
+      'Organizational guardrails are superior to developer-dependent IaC parameters.',
+      'Hindsight memory retention provides immediate recall for identical future incidents.'
+    ],
+    preventiveActions: [
+      'Implement AWS Service Control Policy (SCP) forbidding disabling Block Public Access',
+      'Add pre-commit hook scanning Terraform modules for public access definitions'
+    ],
+    evidenceIds: ['EVD-301', 'EVD-302', 'EVD-303'],
+    relatedHistoricalIncidents: ['INC-1007', 'INC-1015'],
+    committedToHindsight: true,
+    createdAt: '2026-02-21T14:00:00Z'
+  }
+];

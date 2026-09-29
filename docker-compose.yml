@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Structured Application Data Store (PostgreSQL)
+  postgres:
+    image: postgres:16-alpine
+    container_name: memory-forge-db
+    environment:
+      POSTGRES_DB: memoryforge
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secure_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend Service with Agent Orchestrator
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: memory-forge-api
+    environment:
+      DATABASE_URL: postgresql://postgres:secure_dev_password@postgres:5432/memoryforge
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      HINDSIGHT_ENDPOINT: http://hindsight:8080
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Memory Forge React Frontend & Full-Stack Node Runtime
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: memory-forge-web
+    environment:
+      PORT: 3000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

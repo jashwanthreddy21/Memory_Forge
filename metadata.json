@@ -1,0 +1,8 @@
+{
+  "name": "Memory Forge",
+  "description": "AI Security Operations & Compliance Memory Agent powered by Hindsight organizational memory. Turn security incidents into persistent organizational memory.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
