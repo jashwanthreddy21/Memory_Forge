@@ -25,9 +25,18 @@ import {
   INITIAL_TIMELINE,
   INITIAL_POSTMORTEMS
 } from '../data/seedData';
+import { GoogleGenAI } from '@google/genai';
 import { HindsightService } from './hindsightClient';
 
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+let clientAi: GoogleGenAI | null = null;
+const clientApiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? (process as any).env?.GEMINI_API_KEY : '');
+if (clientApiKey) {
+  try {
+    clientAi = new GoogleGenAI({ apiKey: clientApiKey });
+  } catch (_) {}
+}
 
 class ApiClient {
   private localIncidents: Incident[] = [...INITIAL_INCIDENTS];
@@ -493,7 +502,55 @@ class ApiClient {
         return data.reply;
       }
     } catch (_) {}
-    return `For ${incidentId}, apply the preventive Block Public Access rule verified in INC-1024 to remediate unauthenticated read exposure.`;
+
+    const inc = this.localIncidents.find(i => i.id === incidentId) || this.localIncidents[0];
+    const recalled = HindsightService.recallSimilar(inc, this.localMemories);
+
+    // If client-side Gemini AI key is present, invoke Gemini directly
+    if (clientAi) {
+      try {
+        const prompt = `
+You are Memory Forge AI, an elite cybersecurity copilot assisting a Security Engineer on incident ${inc.id}.
+INCIDENT DETAILS:
+Title: ${inc.title}
+Asset: ${inc.affectedAsset}
+Description: ${inc.description}
+Severity: ${inc.severity}
+Status: ${inc.status}
+
+HISTORICAL CONTEXT FROM HINDSIGHT:
+- ${recalled.map(m => `${m.sourceIncidentId}: ${m.title} (Root cause: ${m.rootCause}, Remediation: ${m.previousRemediation.join('; ')})`).join('\n- ')}
+
+USER QUESTION: "${question}"
+
+Provide a direct, technical, and actionable response. If code, Terraform, CLI commands, or policies are requested, output clean formatted markdown blocks. Include exact asset names (${inc.affectedAsset}) and specific security controls.
+`;
+        const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+        for (const m of models) {
+          try {
+            const res = await clientAi.models.generateContent({ model: m, contents: prompt });
+            if (res && res.text) return res.text.trim();
+          } catch (_) {}
+        }
+      } catch (_) {}
+    }
+
+    // Rich contextual security responder fallback
+    const q = question.toLowerCase();
+    if (q.includes('terraform') || q.includes('iac') || q.includes('code')) {
+      return `### Terraform Remediation for ${inc.affectedAsset}\n\nApply the following resource configuration to enforce account-wide immutable public access block:\n\n\`\`\`hcl\n# enforce-bucket-privacy.tf\nresource "aws_s3_bucket_public_access_block" "remediation_${inc.id.toLowerCase().replace('-', '_')}" {\n  bucket = "${inc.affectedAsset}"\n\n  block_public_acls       = true\n  block_public_policy     = true\n  ignore_public_acls      = true\n  restrict_public_buckets = true\n}\n\`\`\`\n*Verified against historical playbook **INC-1024**.*`;
+    }
+
+    if (q.includes('cli') || q.includes('aws') || q.includes('command') || q.includes('hi') || q.includes('hello')) {
+      return `Hello. I am Memory Forge AI. I have ingested the details for **${inc.id}** and cross-referenced historical patterns from **INC-1024**, **INC-1030**, and **INC-1015**.\n\nGiven the recurrence of public exposure issues, we must enforce a hard-stop at the infrastructure level.\n\n**Immediate Remediation (Containment)** Execute the following AWS CLI command to immediately revoke public access to \`${inc.affectedAsset}\` and enforce Block Public Access (BPA) settings:\n\n\`\`\`bash\n# Apply Block Public Access to the bucket\naws s3api put-public-access-block \\\n    --bucket ${inc.affectedAsset} \\\n    --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"\n\n# Remove any existing public bucket policy\naws s3api delete-bucket-policy --bucket ${inc.affectedAsset}\n\`\`\`\n*Audit artifact will automatically generate SHA-256 hash for Evidence Vault submission.*`;
+    }
+
+    if (q.includes('ciso') || q.includes('executive') || q.includes('summary')) {
+      return `### Executive Briefing for CISO\n\n**Incident:** ${inc.id} — ${inc.title}  \n**Asset:** \`${inc.affectedAsset}\`  \n**Classification:** ${inc.severity} Severity · Access Control Drift\n\n> "On **${inc.detectedAt?.split('T')[0] || 'today'}**, automated CSPM monitoring identified an unauthenticated public read exposure on production asset \`${inc.affectedAsset}\`. Emergency containment revoked public access within 18 minutes; forensic review of access logs confirmed zero unauthorized data egress, and preventive Organization SCP guardrails have been locked per historical precedence INC-1024."`;
+    }
+
+    const topMatch = recalled[0];
+    return `### Security Analysis for ${inc.id} (${inc.title})\n\n- **Affected Asset:** \`${inc.affectedAsset}\` (${inc.environment})\n- **Historical Recalled Precedence:** ${topMatch ? `**${topMatch.sourceIncidentId}** (${topMatch.title}) with **${(topMatch.similarity * 100).toFixed(0)}% similarity**.` : 'Incident matched Access Control patterns.'}\n- **Root Cause:** Misconfigured access control policy in deployment template allowing unauthenticated reads.\n- **Recommended Action:** Execute emergency containment by applying S3 Block Public Access directly at the account or organizational level, followed by updating IaC templates to make \`block_public_acls = true\` immutable.`;
   }
 
   async resetDemo(): Promise<void> {
