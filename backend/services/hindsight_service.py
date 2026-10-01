@@ -6,11 +6,17 @@ Manages persistent organizational security memory:
 - REFLECTION / RELATIONSHIP DISCOVERY: Control mapping & recurring pattern synthesis
 """
 
-from typing import List, Dict, Any, Optional
+import os
 import math
+import httpx
+from typing import List, Dict, Any, Optional
 
 class HindsightService:
     def __init__(self):
+        self.api_url = os.environ.get("HINDSIGHT_API_URL", "https://api.hindsight.vectorize.io").rstrip("/")
+        self.api_key = os.environ.get("HINDSIGHT_API_KEY", "hsk_5ce80f94e1632d56a5b7cd9872581de1_62d85853284619ca")
+        self.bank_id = "memory-forge-secops"
+        
         # Initial seed organizational memories
         self.memories: List[Dict[str, Any]] = [
             {
@@ -96,6 +102,19 @@ class HindsightService:
         memory_id = memory_data.get("id") or f"MEM-{len(self.memories) + 2000}"
         record = {**memory_data, "id": memory_id}
         self.memories.insert(0, record)
+        
+        # Sync with Hindsight Cloud if reachable
+        try:
+            content = f"{record.get('sourceIncidentId', '')}: {record.get('title', '')}. Asset: {record.get('affectedAsset', '')}. Root Cause: {record.get('rootCause', '')}. Remediation: {'; '.join(record.get('remediation', []))}"
+            with httpx.Client(timeout=3.0) as client:
+                client.post(
+                    f"{self.api_url}/v1/default/banks/{self.bank_id}/memories",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json={"items": [{"content": content, "document_id": memory_id, "tags": record.get("tags", [])}]}
+                )
+        except Exception as e:
+            pass
+
         return record
 
     def recall(self, incident: Dict[str, Any], threshold: float = 0.60) -> List[Dict[str, Any]]:

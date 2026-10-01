@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-10-01T15:08:45.222Z",
+  "lastUpdated": "2026-10-01T15:45:04.191Z",
   "incidents": [
     {
       "id": "INC-1007",
@@ -121,7 +121,7 @@
         "Production"
       ],
       "investigationId": "INV-1038",
-      "memoryCommitted": true,
+      "memoryCommitted": false,
       "recalledMemoryIds": [
         "MEM-1024",
         "MEM-1030",
@@ -130,53 +130,6 @@
     }
   ],
   "memories": [
-    {
-      "id": "MEM-6023",
-      "sourceIncidentId": "INC-1038",
-      "title": "Public Cloud Storage Exposure on Customer Reports",
-      "type": "INCIDENT",
-      "summary": "Public Cloud Storage Exposure on Customer Reports: Investigated and remediated through organizational memory loop.",
-      "rootCause": "Incorrect access policy configuration exposed the storage bucket to public read access. Deployment automation script did not enforce account-level Block Public Access.",
-      "securityControl": "Access Control",
-      "affectedAsset": "customer-reports-bucket",
-      "remediation": [
-        "Remove public access immediately via bucket policy override",
-        "Review IAM policy configuration and service role boundaries",
-        "Enable preventive account-level Block Public Access (BPA)",
-        "Configure continuous cloud configuration monitoring with real-time alerting",
-        "Validate access controls post-remediation using automated compliance test"
-      ],
-      "evidence": [
-        "EVD-886: Post-incident verified configuration state"
-      ],
-      "severity": "HIGH",
-      "status": "ACTIVE",
-      "lessonsLearned": [
-        "Prior memory from INC-1024 enabled instant diagnosis of the access policy flaw.",
-        "Enforcing SCP preventive guardrails eliminates repetitive developer configuration errors."
-      ],
-      "tags": [
-        "Cloud Storage",
-        "Public Exposure",
-        "IAM Policy",
-        "Production",
-        "Hindsight",
-        "Access Control"
-      ],
-      "createdAt": "2026-10-01T15:04:25.870Z",
-      "relationships": [
-        {
-          "targetId": "ctrl-ac",
-          "targetType": "CONTROL",
-          "relation": "MAPS_TO"
-        },
-        {
-          "targetId": "INC-1038",
-          "targetType": "INCIDENT",
-          "relation": "RESOLVES"
-        }
-      ]
-    },
     {
       "id": "MEM-1007",
       "sourceIncidentId": "INC-1007",
@@ -763,16 +716,6 @@
     }
   ],
   "timeline": [
-    {
-      "id": "TL-46",
-      "date": "Just now",
-      "title": "Investigation INC-1038 Committed to Hindsight Memory",
-      "type": "REMEDIATION",
-      "description": "Incident knowledge, root cause, and remediation proof permanently retained in Hindsight as MEM-6023.",
-      "relatedId": "MEM-6023",
-      "severity": "HIGH",
-      "highlightText": "Hindsight organizational memory expanded for future recall."
-    },
     {
       "id": "TL-01",
       "date": "Jan 14, 2026",

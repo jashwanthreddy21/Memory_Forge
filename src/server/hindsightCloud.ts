@@ -125,12 +125,22 @@ export class HindsightCloudClient {
     return { success: false };
   }
 
+  private recallCache: Map<string, { data: HindsightCloudRecallResponse; ts: number }> = new Map();
+
   /**
-   * Recall memories from Hindsight Cloud
+   * Recall memories from Hindsight Cloud (with fast timeout and in-memory cache)
    */
   async recallMemories(query: string): Promise<HindsightCloudRecallResponse | null> {
-    await this.ensureBank();
+    const cacheKey = query.trim().toLowerCase();
+    const cached = this.recallCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < 300000) { // 5-minute cache
+      return cached.data;
+    }
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2-second fast timeout
+
       const res = await fetch(`${this.apiUrl}/v1/default/banks/${this.bankId}/memories/recall`, {
         method: 'POST',
         headers: {
@@ -140,19 +150,26 @@ export class HindsightCloudClient {
         body: JSON.stringify({
           query,
           budget: 'mid'
-        })
+        }),
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const json: HindsightCloudRecallResponse = await res.json();
         console.log(`[Hindsight Cloud] Recalled ${json.results?.length || 0} memories for query: "${query.slice(0, 40)}..."`);
+        this.recallCache.set(cacheKey, { data: json, ts: Date.now() });
         return json;
       } else {
         const errText = await res.text();
         console.warn(`[Hindsight Cloud] Recall returned status ${res.status}:`, errText);
       }
-    } catch (err) {
-      console.warn(`[Hindsight Cloud] Recall request failed:`, err);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.warn(`[Hindsight Cloud] Recall timed out after 2000ms, using fast local memory engine.`);
+      } else {
+        console.warn(`[Hindsight Cloud] Recall request failed:`, err);
+      }
     }
     return null;
   }

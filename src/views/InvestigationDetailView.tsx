@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShieldAlert,
   Brain,
@@ -18,11 +18,119 @@ import {
   Plus,
   Send,
   Terminal,
-  Cloud
+  Cloud,
+  Copy,
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import { Incident, InvestigationResult, HindsightMemory, RemediationItem, EvidenceRecord } from '../types';
 import { HistoricalRecallTransition } from '../components/HistoricalRecallTransition';
 import { api } from '../services/api';
+
+// Helper: Formatted Code Snippet with 1-Click Copy
+const CodeSnippet: React.FC<{ code: string; language?: string }> = ({ code, language }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="my-2.5 rounded-lg overflow-hidden border border-slate-800 bg-slate-950 font-mono text-[11px] shadow-md">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[10px] text-slate-400">
+        <span className="uppercase font-bold text-cyan-400 tracking-wider flex items-center gap-1.5">
+          <Terminal className="w-3 h-3 text-cyan-400" />
+          <span>{language || 'SCRIPT'}</span>
+        </span>
+        <button
+          onClick={handleCopy}
+          className="hover:text-cyan-300 text-slate-400 flex items-center gap-1 transition-colors px-2 py-0.5 rounded hover:bg-slate-800 cursor-pointer"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          <span className={copied ? 'text-emerald-400 font-semibold' : ''}>{copied ? 'Copied' : 'Copy'}</span>
+        </button>
+      </div>
+      <pre className="p-3 overflow-x-auto text-slate-200 leading-relaxed font-mono">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+};
+
+// Helper: Inline Formatter for Bold, Backticks, Quotes
+function renderInlineFormatted(text: string) {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={idx} className="bg-slate-900 text-cyan-300 px-1 py-0.5 rounded text-[11px] font-mono border border-slate-800">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={idx} className="font-semibold text-slate-100">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+// Helper: Markdown parser for AI responses
+const FormattedAiContent: React.FC<{ content: string }> = ({ content }) => {
+  if (!content) return null;
+
+  // Split by code blocks ```lang ... ```
+  const parts = content.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <div className="space-y-2 text-xs text-slate-300 font-sans leading-relaxed">
+      {parts.map((part, i) => {
+        if (part.startsWith('```') && part.endsWith('```')) {
+          const lines = part.slice(3, -3).trim().split('\n');
+          const firstLine = lines[0].trim();
+          const isLang = /^[a-zA-Z0-9_-]+$/.test(firstLine);
+          const lang = isLang ? firstLine : '';
+          const code = (isLang ? lines.slice(1) : lines).join('\n');
+
+          return <CodeSnippet key={i} code={code} language={lang} />;
+        }
+
+        // Render paragraphs
+        const paragraphs = part.split('\n\n').filter(p => p.trim());
+        return (
+          <div key={i} className="space-y-1.5">
+            {paragraphs.map((p, pIdx) => {
+              if (p.trim().startsWith('>')) {
+                return (
+                  <blockquote key={pIdx} className="border-l-2 border-cyan-500 pl-3 py-1 my-1.5 text-cyan-200/90 italic bg-cyan-950/20 rounded-r">
+                    {p.replace(/^>\s*/gm, '')}
+                  </blockquote>
+                );
+              }
+              if (p.trim().startsWith('###') || p.trim().startsWith('##')) {
+                return (
+                  <h4 key={pIdx} className="font-bold text-slate-100 text-xs tracking-wide pt-1 text-cyan-300">
+                    {p.replace(/^#+\s*/, '')}
+                  </h4>
+                );
+              }
+              return (
+                <p key={pIdx} className="leading-relaxed">
+                  {p.split('\n').map((line, lIdx) => (
+                    <React.Fragment key={lIdx}>
+                      {lIdx > 0 && <br />}
+                      {renderInlineFormatted(line)}
+                    </React.Fragment>
+                  ))}
+                </p>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 interface InvestigationDetailViewProps {
   incident: Incident;
@@ -49,27 +157,57 @@ export const InvestigationDetailView: React.FC<InvestigationDetailViewProps> = (
   // Incident AI Copilot state
   const [copilotQuestion, setCopilotQuestion] = useState<string>('');
   const [copilotLoading, setCopilotLoading] = useState<boolean>(false);
+  const [activePrompt, setActivePrompt] = useState<string | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   const [copilotConversation, setCopilotConversation] = useState<{ q: string; a: string }[]>([
     {
       q: 'What is the immediate recommended containment action for this bucket?',
-      a: 'Execute emergency containment by applying S3 Block Public Access directly at the AWS Organization or account level. Also patch the Terraform template to ensure `block_public_acls = true` and `restrict_public_buckets = true` are enforced.'
+      a: `### Emergency Containment Recommendation
+
+Execute emergency containment by applying S3 Block Public Access directly at the AWS Organization or account level. Also patch the Terraform template to ensure \`block_public_acls = true\` and \`restrict_public_buckets = true\` are enforced.
+
+\`\`\`bash
+# Apply immediate emergency block public access
+aws s3api put-public-access-block \\
+    --bucket ${incident.affectedAsset} \\
+    --public-access-block-configuration "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+\`\`\`
+*Grounded in verified historical playbook **INC-1024**.*`
     }
   ]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [copilotConversation, copilotLoading]);
 
   const handleAskCopilot = async (questionText?: string) => {
     const q = questionText || copilotQuestion;
     if (!q.trim() || copilotLoading) return;
 
+    setActivePrompt(questionText || null);
     setCopilotLoading(true);
     setCopilotQuestion('');
 
+    // Immediately push question with loading answer state
+    setCopilotConversation(prev => [...prev, { q, a: '' }]);
+
     try {
       const answer = await api.askIncidentAi(incident.id, q);
-      setCopilotConversation(prev => [...prev, { q, a: answer }]);
+      setCopilotConversation(prev =>
+        prev.map((item, idx) => (idx === prev.length - 1 ? { ...item, a: answer } : item))
+      );
     } catch (err) {
       console.error(err);
+      setCopilotConversation(prev =>
+        prev.map((item, idx) =>
+          idx === prev.length - 1
+            ? { ...item, a: `*Failed to generate answer. Please try again.*` }
+            : item
+        )
+      );
     } finally {
       setCopilotLoading(false);
+      setActivePrompt(null);
     }
   };
 
@@ -387,9 +525,20 @@ export const InvestigationDetailView: React.FC<InvestigationDetailViewProps> = (
                   Incident AI Copilot (Gemini 3.8 Flash + Hindsight Context)
                 </h3>
               </div>
-              <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
-                Interactive Security Analyst
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCopilotConversation([])}
+                  className="text-[11px] font-mono text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-0.5 rounded hover:bg-slate-900 border border-slate-800/80 transition-colors cursor-pointer"
+                  title="Clear conversation history"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span className="hidden sm:inline">Clear</span>
+                </button>
+                <span className="text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/30">
+                  Interactive Security Analyst
+                </span>
+              </div>
             </div>
 
             <p className="text-xs text-slate-400">
@@ -403,37 +552,55 @@ export const InvestigationDetailView: React.FC<InvestigationDetailViewProps> = (
                 'Generate AWS CLI command to verify bucket ACL',
                 'Draft 2-sentence executive summary for CISO',
                 'What IAM permission boundary should be enforced?'
-              ].map((qp, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleAskCopilot(qp)}
-                  className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border border-slate-800 transition-colors cursor-pointer"
-                >
-                  {qp}
-                </button>
-              ))}
+              ].map((qp, i) => {
+                const isSelected = activePrompt === qp;
+                return (
+                  <button
+                    key={i}
+                    onClick={() => handleAskCopilot(qp)}
+                    disabled={copilotLoading}
+                    className={`px-2.5 py-1 rounded text-xs transition-all cursor-pointer border flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 animate-pulse'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-cyan-300 border-slate-800'
+                    }`}
+                  >
+                    <span>{qp}</span>
+                    {isSelected && <Sparkles className="w-3 h-3 text-cyan-400 animate-spin" />}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Conversation Log */}
-            <div className="space-y-3 max-h-60 overflow-y-auto bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+            <div className="space-y-3 max-h-96 overflow-y-auto bg-slate-900/60 p-3 sm:p-4 rounded-lg border border-slate-800">
+              {copilotConversation.length === 0 && (
+                <div className="text-center py-6 text-slate-500 text-xs font-mono">
+                  Select a quick prompt above or ask a technical question to consult the AI Copilot.
+                </div>
+              )}
+
               {copilotConversation.map((item, idx) => (
-                <div key={idx} className="space-y-1 text-xs font-mono">
+                <div key={idx} className="space-y-1.5 text-xs font-mono">
                   <div className="text-cyan-300 font-semibold flex items-center gap-1.5">
-                    <span className="text-slate-500">Q:</span>
+                    <span className="text-slate-500 font-bold">Q:</span>
                     <span>{item.q}</span>
                   </div>
-                  <div className="text-slate-300 bg-slate-950 p-2.5 rounded border border-slate-800/80 leading-relaxed font-sans text-xs whitespace-pre-wrap">
-                    {item.a}
+
+                  <div className="bg-slate-950 p-3.5 rounded-lg border border-slate-800/80 shadow-inner">
+                    {item.a ? (
+                      <FormattedAiContent content={item.a} />
+                    ) : (
+                      <div className="flex items-center gap-2.5 text-xs font-mono text-cyan-400 py-1">
+                        <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                        <span>AI reasoning over incident telemetry &amp; Hindsight memory...</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
 
-              {copilotLoading && (
-                <div className="flex items-center gap-2 text-xs font-mono text-cyan-400">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
-                  <span>AI reasoning over incident context & Hindsight memory...</span>
-                </div>
-              )}
+              <div ref={chatBottomRef} />
             </div>
 
             {/* Input Bar */}
@@ -449,12 +616,12 @@ export const InvestigationDetailView: React.FC<InvestigationDetailViewProps> = (
                 value={copilotQuestion}
                 onChange={e => setCopilotQuestion(e.target.value)}
                 placeholder="Ask technical question about this incident..."
-                className="flex-1 bg-slate-900 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
+                className="flex-1 bg-slate-900 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 font-mono focus:border-cyan-500 focus:outline-none"
               />
               <button
                 type="submit"
                 disabled={!copilotQuestion.trim() || copilotLoading}
-                className="px-3.5 py-1.5 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Ask AI</span>
