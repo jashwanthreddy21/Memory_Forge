@@ -9,7 +9,10 @@ Validates the Core Loop:
 6. Assert that INC-1024 is returned as related historical knowledge with >= 90% confidence
 """
 
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 from backend.services.hindsight_service import HindsightService
 from backend.agents.investigation_agent import InvestigationAgent
 

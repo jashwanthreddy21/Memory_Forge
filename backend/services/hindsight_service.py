@@ -7,8 +7,10 @@ Manages persistent organizational security memory:
 """
 
 import os
-import math
-import httpx
+try:
+    import httpx
+except ImportError:
+    httpx = None
 from typing import List, Dict, Any, Optional
 
 class HindsightService:
@@ -106,12 +108,13 @@ class HindsightService:
         # Sync with Hindsight Cloud if reachable
         try:
             content = f"{record.get('sourceIncidentId', '')}: {record.get('title', '')}. Asset: {record.get('affectedAsset', '')}. Root Cause: {record.get('rootCause', '')}. Remediation: {'; '.join(record.get('remediation', []))}"
-            with httpx.Client(timeout=3.0) as client:
-                client.post(
-                    f"{self.api_url}/v1/default/banks/{self.bank_id}/memories",
-                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
-                    json={"items": [{"content": content, "document_id": memory_id, "tags": record.get("tags", [])}]}
-                )
+            if httpx:
+                with httpx.Client(timeout=3.0) as client:
+                    client.post(
+                        f"{self.api_url}/v1/default/banks/{self.bank_id}/memories",
+                        headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                        json={"items": [{"content": content, "document_id": memory_id, "tags": record.get("tags", [])}]}
+                    )
         except Exception as e:
             pass
 
