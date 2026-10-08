@@ -525,7 +525,7 @@ USER QUESTION: "${question}"
 
 Provide a direct, technical, and actionable response. If code, Terraform, CLI commands, or policies are requested, output clean formatted markdown blocks. Include exact asset names (${inc.affectedAsset}) and specific security controls.
 `;
-        const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-flash-latest'];
+        const models = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
         for (const m of models) {
           try {
             const res = await clientAi.models.generateContent({ model: m, contents: prompt });

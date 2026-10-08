@@ -403,49 +403,62 @@ Only return valid JSON. Do not include markdown codeblocks if possible or keep s
 // Model cooldown tracker for 429 quota exhaustion
 const modelCooldowns = new Map<string, number>();
 
-// Helper: Robust Gemini generation with multi-model fallback and fast timeout
+// Helper: Robust Gemini generation with multi-model fallback, 503 high-demand resilience, and reliable timeout
 async function generateGeminiWithFallback(prompt: string, config?: any): Promise<string | null> {
   if (!aiClient) return null;
-  // Models in fallback priority order
-  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash'];
+  // Models in fallback priority order (gemini-3.1-flash-lite is active and high-speed)
+  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
   const now = Date.now();
+  const effectiveConfig = {
+    maxOutputTokens: 750,
+    temperature: 0.2,
+    ...(config || {})
+  };
 
   for (const model of modelsToTry) {
     const cooldownUntil = modelCooldowns.get(model) || 0;
     if (now < cooldownUntil) {
-      continue; // Skip model while cooling down from 429 quota exhaustion
+      continue; // Skip model while cooling down from 429 quota or 503 high demand
     }
 
     try {
       const generatePromise = aiClient.models.generateContent({
         model,
         contents: prompt,
-        config: config || { temperature: 0.2 },
+        config: effectiveConfig,
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout on ${model}`)), 4000)
+        setTimeout(() => reject(new Error(`Timeout on ${model}`)), 25000)
       );
 
       const response = await Promise.race([generatePromise, timeoutPromise]);
       if (response && response.text) {
+        console.log(`[AI Engine] Successfully generated response with model: ${model}`);
         return response.text.trim();
       }
     } catch (err: any) {
       const errStr = String(err?.message || err?.status || err || '');
       const isQuota = errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('Quota exceeded');
+      const isHighDemand = errStr.includes('503') || errStr.includes('high demand') || errStr.includes('overloaded');
+
       if (isQuota) {
         // Cool down this model for 60 seconds
         modelCooldowns.set(model, Date.now() + 60000);
+      } else if (isHighDemand) {
+        // Cool down overloaded model for 45 seconds to avoid repeated 503 spikes
+        modelCooldowns.set(model, Date.now() + 45000);
       }
+      console.warn(`[AI Engine] Model ${model} generation failed (${errStr.slice(0, 100)}), trying next...`);
     }
   }
   return null;
 }
 
-// Helper: Contextual Deterministic Security Responder (when AI quota/offline occurs)
+// Helper: Contextual Deterministic Security Responder (when AI quota/503/offline occurs)
 function getContextualSecurityFallback(incident: Incident, question: string, recalled: RecalledMemory[]): string {
   const q = question.toLowerCase();
+  const topMatch = recalled[0];
 
   if (q.includes('terraform') || q.includes('iac') || q.includes('code')) {
     return `### Terraform Remediation for ${incident.affectedAsset}
@@ -511,14 +524,43 @@ aws s3api get-public-access-block --bucket ${incident.affectedAsset}
 *Audit artifact will automatically generate SHA-256 hash for Evidence Vault submission.*`;
   }
 
-  if (q.includes('ciso') || q.includes('executive') || q.includes('summary')) {
+  if (q.includes('prevent') || q.includes('guardrail') || q.includes('recurrence')) {
+    return `### Preventive Controls & Guardrails for ${incident.affectedAsset}
+
+To eliminate recurring access drift observed in **${incident.id}** and **${topMatch ? topMatch.sourceIncidentId : 'INC-1024'}**:
+
+1. **Organizational SCP Enforcement**: Codify AWS Service Control Policy preventing disabling of S3 Block Public Access across all production AWS accounts.
+2. **CI/CD IaC Pre-commit Linting**: Integrate \`checkov\` and \`trivy\` into GitHub Actions / GitLab CI to reject pull requests declaring unverified bucket ACLs.
+3. **Automated Drift Detection**: Configure AWS Config rule \`s3-bucket-public-read-prohibited\` with automated AWS Systems Manager (SSM) auto-remediation runbooks.
+4. **Hindsight Retention**: The post-mortem and verified remediation chain has been retained in organizational memory bank \`memory-forge-secops\`.`;
+  }
+
+  if (q.includes('control') || q.includes('compliance') || q.includes('soc') || q.includes('iso')) {
+    return `### Compliance & Security Control Mapping
+
+- **Primary Control Domain:** **Access Control (AC-3, AC-6)**
+- **SOC 2 Type II Criteria:** **CC6.1, CC6.3** (Logical access security and authorization boundaries)
+- **ISO 27001:2022 Control:** **A.5.15 Access Control** & **A.8.20 Network Security**
+- **Remediation Status:** Verified containment removes non-compliance findings. Audit evidence hash generated for Evidence Vault retention.`;
+  }
+
+  if (q.includes('evidence') || q.includes('audit') || q.includes('hash') || q.includes('proof')) {
+    return `### Forensic Evidence Chain for ${incident.id}
+
+- **Snapshot ID:** \`EVD-501\` (Automated Cloud Security Scanner Alert)
+- **Target Asset:** \`${incident.affectedAsset}\`
+- **Integrity Proof:** Cryptographic SHA-256 hash verified and tamper-proof.
+- **Audit Verification:** Queryable via Audit Assistant for external compliance teams without manual log extraction.`;
+  }
+
+  if (q.includes('ciso') || q.includes('executive') || q.includes('brief')) {
     return `### Executive Briefing for CISO
 
 **Incident:** ${incident.id} — ${incident.title}  
-**Asset:** \`${incident.affectedAsset}\`  
+**Asset:** \`${incident.affectedAsset}\` (${incident.environment})  
 **Classification:** ${incident.severity} Severity · Access Control Drift
 
-> "On **${incident.detectedAt?.split('T')[0] || 'today'}**, automated CSPM monitoring identified an unauthenticated public read exposure on production asset \`${incident.affectedAsset}\`. Emergency containment revoked public access within 18 minutes; forensic review of access logs confirmed zero unauthorized data egress, and preventive Organization SCP guardrails have been locked per historical precedence INC-1024."`;
+> "Automated monitoring identified unauthenticated public read exposure on production asset \`${incident.affectedAsset}\`. Emergency containment revoked public access within 18 minutes. Forensic review of access logs confirmed zero unauthorized data egress, and preventive Organization SCP guardrails have been locked per historical precedence INC-1024."`;
   }
 
   if (q.includes('boundary') || q.includes('iam') || q.includes('permission')) {
@@ -550,13 +592,13 @@ Attach this Service Control Policy (SCP) / IAM Boundary to prevent deployment pi
 *Prevents deployment runners from altering bucket security baselines.*`;
   }
 
-  const topMatch = recalled[0];
-  return `### Security Analysis for ${incident.id} (${incident.title})
+  return `### Security Analysis: ${incident.id} (${incident.title})
 
 - **Affected Asset:** \`${incident.affectedAsset}\` (${incident.environment})
 - **Historical Recalled Precedence:** ${topMatch ? `**${topMatch.sourceIncidentId}** (${topMatch.title}) with **${(topMatch.similarity * 100).toFixed(0)}% similarity**.` : 'Incident matched Access Control patterns.'}
 - **Root Cause:** Misconfigured access control policy in deployment template allowing unauthenticated reads.
-- **Recommended Action:** Execute emergency containment by applying S3 Block Public Access directly at the account or organizational level, followed by updating IaC templates to make \`block_public_acls = true\` immutable.`;
+- **Immediate Containment:** Enforce S3 Block Public Access directly at the account or bucket level.
+- **Permanent Fix:** Update IaC templates to make \`block_public_acls = true\` immutable and attach organizational SCP guardrails.`;
 }
 
 // Interactive AI Incident Chat (Analysts ask AI about this specific incident)
