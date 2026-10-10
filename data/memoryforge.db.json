@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-10-01T15:45:04.191Z",
+  "lastUpdated": "2026-10-10T09:17:15.595Z",
   "incidents": [
     {
       "id": "INC-1007",
@@ -125,6 +125,138 @@
       "recalledMemoryIds": [
         "MEM-1024",
         "MEM-1030",
+        "MEM-1015"
+      ]
+    },
+    {
+      "id": "INC-1042",
+      "title": "Unrestricted Kubernetes API Server Ingress in Production EKS",
+      "description": "EKS cluster control-plane endpoint public access was unexpectedly enabled without CIDR restrictions following an automated cluster upgrade script.",
+      "severity": "CRITICAL",
+      "category": "Kubernetes & Container Security",
+      "affectedAsset": "k8s-prod-cluster-controlplane",
+      "environment": "production",
+      "detectionSource": "Cloud Security Scanner",
+      "detectedAt": "2026-10-02T13:40:00Z",
+      "assignedAnalyst": "Devin Zhao, Principal Cloud Security Architect",
+      "status": "INVESTIGATING",
+      "evidence": "AWS CloudTrail Event: UpdateClusterConfig with endpointPublicAccess=true and publicAccessCidrs=[\"0.0.0.0/0\"].",
+      "tags": [
+        "Kubernetes",
+        "EKS",
+        "API-Security",
+        "Public-Access",
+        "Cluster-Upgrade"
+      ],
+      "investigationId": "INV-1042",
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1015",
+        "MEM-1007"
+      ]
+    },
+    {
+      "id": "INC-1045",
+      "title": "Hardcoded API Secret in Public GitHub Repository Commit",
+      "description": "GitGuardian secret detection triggered on commit to public mirror repository containing live Stripe production API secret key and AWS KMS HMAC token.",
+      "severity": "CRITICAL",
+      "category": "Secrets Management & CI/CD",
+      "affectedAsset": "stripe-billing-webhook-service",
+      "environment": "production",
+      "detectionSource": "Secret Detection Engine",
+      "detectedAt": "2026-10-05T08:15:00Z",
+      "assignedAnalyst": "Sarah Chen, Lead SecOps",
+      "status": "OPEN",
+      "evidence": "Secret scanning alert #8412; GitHub commit SHA a79b2f with active production key entropy match.",
+      "tags": [
+        "Secret-Leak",
+        "Git",
+        "API-Key",
+        "Credential-Exposure",
+        "Production"
+      ],
+      "investigationId": "INV-1045",
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1007"
+      ]
+    },
+    {
+      "id": "INC-1048",
+      "title": "Anomalous Cross-Region Egress Spike on Customer Document Store",
+      "description": "GuardDuty flagged exfiltration behavior: 42 GB of encrypted customer PDF documents downloaded within 12 minutes to an unrecognized IP range via compromised session token.",
+      "severity": "HIGH",
+      "category": "Data Loss Prevention & Network Security",
+      "affectedAsset": "doc-archive-bucket-us-west-2",
+      "environment": "production",
+      "detectionSource": "GuardDuty Anomaly Detector",
+      "detectedAt": "2026-10-07T19:25:00Z",
+      "assignedAnalyst": "Alex Rivera, Incident Responder",
+      "status": "INVESTIGATING",
+      "evidence": "VPC Flow Logs, S3 Server Access Logs, and GuardDuty Finding ID: UnauthorizedAccess:S3/MaliciousIPCaller.",
+      "tags": [
+        "Data-Exfiltration",
+        "GuardDuty",
+        "S3",
+        "Egress-Anomaly",
+        "Session-Hijack"
+      ],
+      "investigationId": "INV-1048",
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1024",
+        "MEM-1030"
+      ]
+    },
+    {
+      "id": "INC-1051",
+      "title": "Privilege Escalation via Lambda IAM Role PassRole Misconfiguration",
+      "description": "Security scanner identified that the invoice generator Lambda execution role contains iam:PassRole without resource boundary constraints, allowing escalation to AdministratorAccess.",
+      "severity": "HIGH",
+      "category": "Cloud Security & IAM",
+      "affectedAsset": "invoice-generator-lambda-execution-role",
+      "environment": "staging",
+      "detectionSource": "IAM Access Analyzer",
+      "detectedAt": "2026-10-08T11:05:00Z",
+      "assignedAnalyst": "Marcus Vance, Senior Security Engineer",
+      "status": "REMEDIATION_PENDING",
+      "evidence": "IAM Access Analyzer evaluation report showing role passability to EC2 and Lambda resources.",
+      "tags": [
+        "IAM",
+        "Lambda",
+        "Privilege-Escalation",
+        "PassRole",
+        "Least-Privilege"
+      ],
+      "investigationId": "INV-1051",
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1007"
+      ]
+    },
+    {
+      "id": "INC-1055",
+      "title": "TLS 1.0/1.1 Deprecation Non-Compliance on Payment Gateway Load Balancer",
+      "description": "Annual PCI-DSS external vulnerability scan failed due to ALB security policy ELBSecurityPolicy-2016-08 still accepting legacy TLS 1.0 and 1.1 handshake ciphers.",
+      "severity": "MEDIUM",
+      "category": "Compliance & Cryptography",
+      "affectedAsset": "pay-alb-prod-external",
+      "environment": "production",
+      "detectionSource": "Compliance Conformance Engine",
+      "detectedAt": "2026-10-09T14:50:00Z",
+      "assignedAnalyst": "Elena Rostov, Compliance Analyst",
+      "status": "OPEN",
+      "evidence": "Qualys SSL Labs scan grading report (B rating) highlighting deprecated CBC cipher suites.",
+      "tags": [
+        "PCI-DSS",
+        "TLS",
+        "ALB",
+        "Cryptography",
+        "Compliance"
+      ],
+      "investigationId": "INV-1055",
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
         "MEM-1015"
       ]
     }

@@ -4,6 +4,7 @@ import {
   Search,
   Filter,
   Plus,
+  Download,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -43,6 +44,66 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
     return true;
   });
 
+  const handleDownloadCsv = () => {
+    // Transform current incidents state array into formatted CSV string
+    const targetIncidents = filtered.length > 0 ? filtered : incidents;
+    if (!targetIncidents || targetIncidents.length === 0) return;
+
+    const headers = [
+      'Incident ID',
+      'Title',
+      'Severity',
+      'Status',
+      'Affected Asset',
+      'Environment',
+      'Category',
+      'Detection Source',
+      'Detected At',
+      'Assigned Analyst',
+      'Memory Committed',
+      'Tags',
+      'Description'
+    ];
+
+    const escapeCsv = (val: string | number | boolean | null | undefined): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const rows = targetIncidents.map(inc => [
+      escapeCsv(inc.id),
+      escapeCsv(inc.title),
+      escapeCsv(inc.severity),
+      escapeCsv(inc.status),
+      escapeCsv(inc.affectedAsset),
+      escapeCsv(inc.environment),
+      escapeCsv(inc.category),
+      escapeCsv(inc.detectionSource),
+      escapeCsv(inc.detectedAt),
+      escapeCsv(inc.assignedAnalyst),
+      escapeCsv(inc.memoryCommitted ? 'Yes' : 'No'),
+      escapeCsv(inc.tags ? inc.tags.join('; ') : ''),
+      escapeCsv(inc.description)
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.join(','))
+    ].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `incidents-${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* View Header */}
@@ -57,13 +118,28 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenCreate}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs shadow-md shadow-blue-900/30 transition-all cursor-pointer shrink-0"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Ingest Incident</span>
-        </button>
+        <div className="flex items-center gap-2.5">
+          <button
+            id="download-as-csv-btn"
+            data-testid="download-as-csv-btn"
+            onClick={handleDownloadCsv}
+            disabled={incidents.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-slate-600 font-semibold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+            title="Download incidents as CSV"
+            aria-label="Download as CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Download as CSV</span>
+          </button>
+
+          <button
+            onClick={onOpenCreate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs shadow-md shadow-blue-900/30 transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Ingest Incident</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

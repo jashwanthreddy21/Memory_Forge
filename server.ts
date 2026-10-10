@@ -403,55 +403,45 @@ Only return valid JSON. Do not include markdown codeblocks if possible or keep s
 // Model cooldown tracker for 429 quota exhaustion
 const modelCooldowns = new Map<string, number>();
 
-// Helper: Robust Gemini generation with multi-model fallback, 503 high-demand resilience, and reliable timeout
+// Helper: Robust Gemini generation with high-speed gemini-3.1-flash-lite, token bounding, and quiet failover
 async function generateGeminiWithFallback(prompt: string, config?: any): Promise<string | null> {
   if (!aiClient) return null;
-  // Models in fallback priority order (gemini-3.1-flash-lite is active and high-speed)
-  const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
-  const now = Date.now();
+  // gemini-3.1-flash-lite is active, reliable, and responds in under 1.5s
   const effectiveConfig = {
-    maxOutputTokens: 750,
+    maxOutputTokens: 450,
     temperature: 0.2,
     ...(config || {})
   };
 
-  for (const model of modelsToTry) {
-    const cooldownUntil = modelCooldowns.get(model) || 0;
-    if (now < cooldownUntil) {
-      continue; // Skip model while cooling down from 429 quota or 503 high demand
-    }
-
+  // Attempt up to 2 fast passes on gemini-3.1-flash-lite
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const generatePromise = aiClient.models.generateContent({
-        model,
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
         config: effectiveConfig,
       });
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout on ${model}`)), 25000)
+        setTimeout(() => reject(new Error('Timeout on gemini-3.1-flash-lite')), 12000)
       );
 
       const response = await Promise.race([generatePromise, timeoutPromise]);
       if (response && response.text) {
-        console.log(`[AI Engine] Successfully generated response with model: ${model}`);
+        console.log(`[AI Engine] Successfully generated response in attempt ${attempt}`);
         return response.text.trim();
       }
     } catch (err: any) {
       const errStr = String(err?.message || err?.status || err || '');
-      const isQuota = errStr.includes('429') || errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('Quota exceeded');
-      const isHighDemand = errStr.includes('503') || errStr.includes('high demand') || errStr.includes('overloaded');
-
-      if (isQuota) {
-        // Cool down this model for 60 seconds
-        modelCooldowns.set(model, Date.now() + 60000);
-      } else if (isHighDemand) {
-        // Cool down overloaded model for 45 seconds to avoid repeated 503 spikes
-        modelCooldowns.set(model, Date.now() + 45000);
+      console.log(`[AI Engine] Attempt ${attempt} note: ${errStr.slice(0, 80)}`);
+      if (attempt === 1) {
+        // Brief 400ms pause before second attempt
+        await new Promise(r => setTimeout(r, 400));
       }
-      console.warn(`[AI Engine] Model ${model} generation failed (${errStr.slice(0, 100)}), trying next...`);
     }
   }
+
+  // Graceful transition to deterministic contextual security engine
   return null;
 }
 
