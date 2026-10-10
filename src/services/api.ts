@@ -68,9 +68,16 @@ class ApiClient {
     try {
       const res = await fetch(`${BASE_URL}/api/incidents`);
       if (res.ok) {
-        const data = await res.json();
-        this.localIncidents = data;
-        return data;
+        const data: Incident[] = await res.json();
+        // Guarantee unique IDs on client side
+        const seen = new Set<string>();
+        const deduped = data.filter(inc => {
+          if (!inc.id || seen.has(inc.id)) return false;
+          seen.add(inc.id);
+          return true;
+        });
+        this.localIncidents = deduped;
+        return deduped;
       }
     } catch (_) {}
     return this.localIncidents;
@@ -81,6 +88,7 @@ class ApiClient {
       const res = await fetch(`${BASE_URL}/api/incidents/${id}`);
       if (res.ok) return await res.json();
     } catch (_) {}
+
     const inc = this.localIncidents.find(i => i.id === id) || this.localIncidents[0];
     const recalled = HindsightService.recallSimilar(inc, this.localMemories);
     return { incident: inc, recalledMemories: recalled };
@@ -95,7 +103,12 @@ class ApiClient {
       });
       if (res.ok) {
         const created = await res.json();
-        this.localIncidents.unshift(created);
+        const existingIdx = this.localIncidents.findIndex(i => i.id === created.id);
+        if (existingIdx >= 0) {
+          this.localIncidents[existingIdx] = created;
+        } else {
+          this.localIncidents.unshift(created);
+        }
         return created;
       }
     } catch (_) {}
@@ -117,7 +130,12 @@ class ApiClient {
       memoryCommitted: false,
       recalledMemoryIds: []
     };
-    this.localIncidents.unshift(newInc);
+    const existingIdx = this.localIncidents.findIndex(i => i.id === newInc.id);
+    if (existingIdx >= 0) {
+      this.localIncidents[existingIdx] = newInc;
+    } else {
+      this.localIncidents.unshift(newInc);
+    }
     return newInc;
   }
 

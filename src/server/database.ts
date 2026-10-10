@@ -59,6 +59,15 @@ export class PersistentDatabase {
       try {
         const raw = fs.readFileSync(this.dbPath, 'utf-8');
         const parsed = JSON.parse(raw);
+        // Guarantee incident IDs are strictly unique across sessions
+        if (Array.isArray(parsed.incidents)) {
+          const seen = new Set<string>();
+          parsed.incidents = parsed.incidents.filter((inc: Incident) => {
+            if (!inc.id || seen.has(inc.id)) return false;
+            seen.add(inc.id);
+            return true;
+          });
+        }
         console.log(`[Database] Loaded persistent database from ${this.dbPath} with ${parsed.incidents?.length || 0} incidents`);
         return parsed;
       } catch (err) {
@@ -104,6 +113,12 @@ export class PersistentDatabase {
   }
 
   addIncident(incident: Incident): Incident {
+    const existingIndex = this.data.incidents.findIndex(i => i.id === incident.id);
+    if (existingIndex >= 0) {
+      this.data.incidents[existingIndex] = { ...this.data.incidents[existingIndex], ...incident };
+      this.save();
+      return this.data.incidents[existingIndex];
+    }
     this.data.incidents.unshift(incident);
     this.save();
     return incident;

@@ -177,12 +177,12 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
       <div className="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         {/* Mobile View: High-density interactive cards */}
         <div className="md:hidden divide-y divide-slate-800/80">
-          {filtered.map(inc => {
+          {filtered.map((inc, index) => {
             const isSpecialDemo = inc.id === 'INC-1038' || inc.id === 'INC-1024';
 
             return (
               <div
-                key={inc.id}
+                key={`${inc.id}-${index}`}
                 onClick={() => onSelectIncident(inc.id)}
                 className="p-3.5 hover:bg-slate-900/60 active:bg-slate-900 transition-colors cursor-pointer space-y-2.5"
               >
@@ -273,12 +273,12 @@ export const IncidentsView: React.FC<IncidentsViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-sans">
-              {filtered.map(inc => {
+              {filtered.map((inc, index) => {
                 const isSpecialDemo = inc.id === 'INC-1038' || inc.id === 'INC-1024';
 
                 return (
                   <tr
-                    key={inc.id}
+                    key={`${inc.id}-${index}`}
                     onClick={() => onSelectIncident(inc.id)}
                     className="hover:bg-slate-900/50 transition-colors cursor-pointer group"
                   >

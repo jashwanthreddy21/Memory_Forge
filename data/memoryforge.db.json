@@ -1,7 +1,58 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-10-10T09:17:15.595Z",
+  "lastUpdated": "2026-10-10T09:37:34.468Z",
   "incidents": [
+    {
+      "id": "INC-1015",
+      "title": "Public Database Exposure via Security Group Ingress",
+      "description": "PostgreSQL read-replica security group was modified to allow 0.0.0.0/0 on port 5432 during staging debug session.",
+      "severity": "CRITICAL",
+      "category": "Infrastructure",
+      "affectedAsset": "prod-replica-pg-01",
+      "environment": "production",
+      "detectionSource": "Network Flow Monitor",
+      "detectedAt": "2026-10-10T09:26:17.085Z",
+      "assignedAnalyst": "Marcus Vance, Senior Security Engineer",
+      "status": "INVESTIGATING",
+      "evidence": "VPC Flow logs and Terraform state drift delta.",
+      "tags": [
+        "Network",
+        "PostgreSQL",
+        "Security-Group",
+        "Public-IP"
+      ],
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1024",
+        "MEM-1015"
+      ],
+      "investigationId": "INV-1015"
+    },
+    {
+      "id": "INC-1045",
+      "title": "Over-Privileged Service Account in Deployment Runner",
+      "description": "CI/CD runner token detected with roles/owner on production cloud projects.",
+      "severity": "CRITICAL",
+      "category": "Cloud Security",
+      "affectedAsset": "github-deployer-sa",
+      "environment": "production",
+      "detectionSource": "IAM Privilege Scanner",
+      "detectedAt": "2026-10-10T09:20:51.980Z",
+      "assignedAnalyst": "Alex Rivera, Incident Responder",
+      "status": "INVESTIGATING",
+      "evidence": "IAM audit log exported broad wildcard mutations on compute and storage assets.",
+      "tags": [
+        "IAM",
+        "CI/CD",
+        "Least Privilege",
+        "Runner"
+      ],
+      "memoryCommitted": false,
+      "recalledMemoryIds": [
+        "MEM-1007"
+      ],
+      "investigationId": "INV-1045"
+    },
     {
       "id": "INC-1007",
       "title": "Excessive IAM Permissions on Deployment Pipeline",
@@ -24,31 +75,6 @@
       "investigationId": "INV-1007",
       "memoryCommitted": true,
       "recalledMemoryIds": []
-    },
-    {
-      "id": "INC-1015",
-      "title": "Public Database Exposure via Security Group Ingress",
-      "description": "PostgreSQL read-replica security group was modified to allow 0.0.0.0/0 on port 5432 during staging debug session.",
-      "severity": "CRITICAL",
-      "category": "Infrastructure",
-      "affectedAsset": "prod-replica-pg-01",
-      "environment": "production",
-      "detectionSource": "Network Flow Monitor",
-      "detectedAt": "2026-02-02T14:15:00Z",
-      "assignedAnalyst": "Marcus Vance, Senior Security Engineer",
-      "status": "RESOLVED",
-      "evidence": "VPC Flow logs and Terraform state drift delta.",
-      "tags": [
-        "Network",
-        "PostgreSQL",
-        "Security-Group",
-        "Public-IP"
-      ],
-      "investigationId": "INV-1015",
-      "memoryCommitted": true,
-      "recalledMemoryIds": [
-        "MEM-1007"
-      ]
     },
     {
       "id": "INC-1024",
@@ -152,32 +178,6 @@
       "memoryCommitted": false,
       "recalledMemoryIds": [
         "MEM-1015",
-        "MEM-1007"
-      ]
-    },
-    {
-      "id": "INC-1045",
-      "title": "Hardcoded API Secret in Public GitHub Repository Commit",
-      "description": "GitGuardian secret detection triggered on commit to public mirror repository containing live Stripe production API secret key and AWS KMS HMAC token.",
-      "severity": "CRITICAL",
-      "category": "Secrets Management & CI/CD",
-      "affectedAsset": "stripe-billing-webhook-service",
-      "environment": "production",
-      "detectionSource": "Secret Detection Engine",
-      "detectedAt": "2026-10-05T08:15:00Z",
-      "assignedAnalyst": "Sarah Chen, Lead SecOps",
-      "status": "OPEN",
-      "evidence": "Secret scanning alert #8412; GitHub commit SHA a79b2f with active production key entropy match.",
-      "tags": [
-        "Secret-Leak",
-        "Git",
-        "API-Key",
-        "Credential-Exposure",
-        "Production"
-      ],
-      "investigationId": "INV-1045",
-      "memoryCommitted": false,
-      "recalledMemoryIds": [
         "MEM-1007"
       ]
     },

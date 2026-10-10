@@ -415,9 +415,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-2">
-              {incidents.slice(0, 4).map((inc) => (
+              {incidents.slice(0, 4).map((inc, idx) => (
                 <div
-                  key={inc.id}
+                  key={`${inc.id}-${idx}`}
                   onClick={() => onSelectIncident(inc.id)}
                   className="p-3 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer flex items-center justify-between gap-3 group"
                 >
